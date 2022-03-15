@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using API.Errors;
 
@@ -24,18 +25,20 @@ namespace API.Middleware
             }
             catch(Exception ex)
             {
-                this.Logger.LogError(ex,ex.Message);
+                Logger.LogError(ex, ex.Message);
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-               
-               var response=new object();
-                if(Env.IsDevelopment()) 
-                    response = (new ApiException((int)HttpStatusCode.InternalServerError),ex.Message,ex.StackTrace);
-                else
-                    response = (new ApiException((int)HttpStatusCode.InternalServerError));
 
-                var json = System.Text.Json.JsonSerializer.Serialize(response);
+                var response = Env.IsDevelopment()
+                    ? new ApiException((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString())
+                    : new ApiException((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString());
+
+                var options = new JsonSerializerOptions{PropertyNamingPolicy = JsonNamingPolicy.CamelCase};
+
+                var json = JsonSerializer.Serialize(response, options);
+
                 await context.Response.WriteAsync(json);
+                
             }
         }
         public ExceptionMiddleware(RequestDelegate next, IHostEnvironment env) 
